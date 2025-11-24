@@ -2,7 +2,7 @@
 """Финальный тест auto mode с vision"""
 import sys
 import os
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '.'))
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from src.llm_client import GeminiClient
 from src.prompts import VISION_SYSTEM_PROMPT

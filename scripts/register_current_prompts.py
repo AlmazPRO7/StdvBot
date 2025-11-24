@@ -1,6 +1,8 @@
 import sys
-import os
-sys.path.insert(0, os.getcwd())
+from pathlib import Path
+
+# Добавить корень проекта в path
+sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from src.prompts import ANALYST_SYSTEM_PROMPT, SUPPORT_AGENT_SYSTEM_PROMPT, VISION_SYSTEM_PROMPT, UNIVERSAL_AGENT_SYSTEM_PROMPT
 from prompt_engineering.prompt_manager import PromptManager

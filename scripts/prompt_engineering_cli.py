@@ -23,8 +23,8 @@ import argparse
 import json
 from pathlib import Path
 
-# Добавить текущую директорию в path
-sys.path.insert(0, str(Path(__file__).parent))
+# Добавить корень проекта в path
+sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from prompt_engineering.metrics_calculator import MetricsCalculator
 from prompt_engineering.ab_testing import ABTester, PromptVariant

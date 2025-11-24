@@ -22,6 +22,8 @@ data/
 *.tmp
 tunnel_url.txt
 tunnel.log
+.pytest_cache/
+reports/
 
 # Secrets
 *.pem

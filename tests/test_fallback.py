@@ -6,7 +6,7 @@ import sys
 import os
 
 # Добавляем путь к src
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '.'))
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from src.llm_client import GeminiClient
 from src.prompts import ANALYST_SYSTEM_PROMPT, VISION_SYSTEM_PROMPT

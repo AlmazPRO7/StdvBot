@@ -2,6 +2,11 @@ import pandas as pd
 import random
 import sys
 import time
+from pathlib import Path
+
+# Добавить корень проекта в path
+sys.path.insert(0, str(Path(__file__).parent.parent))
+
 from src.llm_client import GeminiClient
 from src.prompts import ANALYST_SYSTEM_PROMPT, SUPPORT_AGENT_SYSTEM_PROMPT
 

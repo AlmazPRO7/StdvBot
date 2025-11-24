@@ -1,45 +1,74 @@
-# ConstructionAI System 🏗️
+# ConstructionAI Bot
 
-An automated AI pipeline for handling customer service requests in retail (Construction materials domain).
-Demonstrates **Prompt Engineering**, **Structured Data Extraction (JSON)**, and **Brand-Safe Automated Replies**.
+Telegram-бот с AI для автоматизации поддержки клиентов в сфере стройматериалов.
 
-## 🚀 Key Features
+## Возможности
 
-1.  **Analyst Agent:** Uses LLM to classify incoming unstructured messages into strict JSON format (`intent`, `sentiment`, `urgency`).
-2.  **Support Agent:** Generates empathic, brand-safe apology letters for negative reviews.
-    *   *Innovation:* Implements **Negative Constraints** in system prompts to prevent the model from admitting systemic failures ("we failed standards") and instead focuses on specific incident resolution.
-3.  **Vision Agent:** Analyzes photos of construction materials/tools with product identification and search suggestions.
-4.  **Automatic Fallback:** OpenRouter → Google Gemini Direct API при rate limits (200→1500 requests/day). See [FALLBACK_MECHANISM.md](FALLBACK_MECHANISM.md)
-5.  **Robust Architecture:** Separation of concerns (Config, Logic, Prompts), Error Handling, and Environment Security.
+- **Анализ сообщений** — классификация интентов, определение тональности и срочности (JSON)
+- **Vision-анализ** — распознавание товаров на фото и генерация поисковых ссылок
+- **Telegram-интеграция** — полнофункциональный бот с поддержкой текста, фото и документов
+- **Google Gemini** — использует Gemini 2.0 Flash через OAuth ADC
 
-## 🛠 Tech Stack
-*   **Python 3.10+**
-*   **Google Gemini API** (via `requests` for lightweight implementation)
-*   **Pandas** for data processing
-*   **Python-dotenv** for security
+## Структура проекта
 
-## 📦 Installation
-
-1. Clone the repository:
-   ```bash
-   git clone https://github.com/YOUR_USERNAME/ConstructionAI_System.git
-   ```
-2. Install dependencies:
-   ```bash
-   pip install python-dotenv pandas requests
-   ```
-3. Setup API Key:
-   Create a `.env` file based on `.env.example` and add your `GEMINI_API_KEY`.
-
-## ▶️ Usage
-
-Run the main pipeline:
-```bash
-python3 main.py
+```
+ConstructionAI_System/
+├── telegram_bot.py        # Главный файл бота
+├── src/                   # Исходный код
+│   ├── llm_client.py      # Клиент для Gemini API
+│   ├── prompts.py         # Системные промпты
+│   └── config.py          # Конфигурация
+├── tests/                 # Тесты
+├── scripts/               # Вспомогательные скрипты
+├── docs/                  # Документация
+├── prompt_engineering/    # Инструменты для работы с промптами
+├── data/                  # Данные (Excel каталог)
+└── requirements.txt       # Зависимости
 ```
 
-The system will generate synthetic customer data, analyze it, and produce a report in `data/final_report.csv`.
+## Установка
 
-## 🧠 Prompt Engineering Highlights
+```bash
+# Клонировать репозиторий
+git clone https://github.com/AlmazPRO7/StdvBot.git
+cd StdvBot
 
-Check `src/prompts.py` to see how **Few-Shot Learning** and **Negative Constraints** are implemented to control the LLM's output structure and tone of voice.
+# Создать виртуальное окружение
+python3 -m venv venv
+source venv/bin/activate
+
+# Установить зависимости
+pip install -r requirements.txt
+
+# Настроить переменные окружения
+cp .env.example .env
+# Заполнить TELEGRAM_BOT_TOKEN
+```
+
+## Настройка Gemini OAuth
+
+```bash
+# Установить gcloud CLI и авторизоваться
+gcloud auth application-default login
+```
+
+## Запуск
+
+```bash
+source venv/bin/activate
+python3 telegram_bot.py
+```
+
+## Документация
+
+Подробная документация в папке `docs/`:
+- [Механизм Fallback](docs/FALLBACK_MECHANISM.md)
+- [Prompt Engineering Guide](docs/PROMPT_ENGINEERING_GUIDE.md)
+- [Vision Prompt](docs/VISION_PROMPT_UPDATE.md)
+
+## Технологии
+
+- Python 3.10+
+- python-telegram-bot
+- Google Gemini 2.0 Flash
+- OAuth ADC (Application Default Credentials)

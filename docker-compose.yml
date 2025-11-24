@@ -1,0 +1,132 @@
+# =============================================================================
+# ConstructionAI Telegram Bot - Docker Compose Configuration
+# Production-ready setup with healthchecks, resource limits, and logging
+# =============================================================================
+
+version: '3.8'
+
+services:
+  # ---------------------------------------------------------------------------
+  # Main Bot Service
+  # ---------------------------------------------------------------------------
+  construction-ai-bot:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        - BUILDKIT_INLINE_CACHE=1
+    image: construction-ai-bot:latest
+    container_name: construction_ai
+    hostname: construction-ai-bot
+
+    # Restart policy
+    restart: unless-stopped
+
+    # Environment configuration
+    env_file:
+      - .env
+    environment:
+      - TZ=Europe/Moscow
+      - PYTHONUNBUFFERED=1
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+      - LOG_FORMAT=${LOG_FORMAT:-json}
+
+    # Volume mounts for persistence
+    volumes:
+      # Application data (knowledge base, cache)
+      - ./data:/app/data:rw
+      # Logs directory
+      - ./logs:/app/logs:rw
+      # A/B testing experiments
+      - ./experiments:/app/experiments:rw
+      - ./prompt_engineering/experiments:/app/prompt_engineering/experiments:rw
+      # Knowledge base (read-only in production)
+      - ./knowledge_base.txt:/app/knowledge_base.txt:ro
+
+    # Healthcheck configuration
+    healthcheck:
+      test: ["CMD", "/usr/local/bin/healthcheck.sh"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+    # Resource limits
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 512M
+        reservations:
+          cpus: '0.25'
+          memory: 128M
+
+    # Logging configuration
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "5"
+        labels: "service,environment"
+        tag: "{{.Name}}/{{.ID}}"
+
+    # Labels for organization
+    labels:
+      - "com.constructionai.service=bot"
+      - "com.constructionai.environment=${ENVIRONMENT:-production}"
+      - "com.constructionai.version=1.0.0"
+
+    # Network configuration
+    networks:
+      - construction-ai-network
+
+    # Security options
+    security_opt:
+      - no-new-privileges:true
+
+    # Read-only root filesystem (optional, uncomment if needed)
+    # read_only: true
+    # tmpfs:
+    #   - /tmp:size=100M,mode=1777
+
+  # ---------------------------------------------------------------------------
+  # Optional: Redis for caching (uncomment if needed)
+  # ---------------------------------------------------------------------------
+  # redis:
+  #   image: redis:7-alpine
+  #   container_name: construction_ai_redis
+  #   restart: unless-stopped
+  #   command: redis-server --appendonly yes --maxmemory 100mb --maxmemory-policy allkeys-lru
+  #   volumes:
+  #     - redis_data:/data
+  #   healthcheck:
+  #     test: ["CMD", "redis-cli", "ping"]
+  #     interval: 10s
+  #     timeout: 5s
+  #     retries: 3
+  #   deploy:
+  #     resources:
+  #       limits:
+  #         cpus: '0.5'
+  #         memory: 128M
+  #   networks:
+  #     - construction-ai-network
+
+# -----------------------------------------------------------------------------
+# Networks
+# -----------------------------------------------------------------------------
+networks:
+  construction-ai-network:
+    driver: bridge
+    name: construction_ai_net
+    ipam:
+      driver: default
+      config:
+        - subnet: 172.28.0.0/16
+
+# -----------------------------------------------------------------------------
+# Volumes (for optional services)
+# -----------------------------------------------------------------------------
+# volumes:
+#   redis_data:
+#     driver: local

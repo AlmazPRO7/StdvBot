@@ -1,0 +1,29 @@
+# Environment
+.env
+*.env
+venv/
+__pycache__/
+*.pyc
+
+# Logs
+*.log
+logs/
+
+# Data
+data/
+*.csv
+
+# IDE
+.idea/
+.vscode/
+*.swp
+
+# Temp
+*.tmp
+tunnel_url.txt
+tunnel.log
+
+# Secrets
+*.pem
+*.key
+cloudflared

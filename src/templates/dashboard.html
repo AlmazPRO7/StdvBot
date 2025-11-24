@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>ConstructionAI Monitor</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <!-- PrismJS -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css" rel="stylesheet" />
+
+    <style>
+        :root {
+            --bg-body: #0d1117;
+            --bg-card: #161b22;
+            --border: #30363d;
+            --text-main: #e6edf3;
+            --text-muted: #8b949e;
+            --accent: #238636;
+        }
+        body {
+            background-color: var(--bg-body);
+            color: var(--text-main);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+            padding: 15px;
+            padding-bottom: 50px;
+        }
+
+        /* HEADER */
+        .app-header {
+            display: flex; justify-content: space-between; align-items: center;
+            margin-bottom: 20px; padding-bottom: 10px; border-bottom: 1px solid var(--border);
+        }
+        .app-title { font-weight: 700; font-size: 1.1rem; }
+        .status-badge { 
+            background: rgba(35, 134, 54, 0.2); color: #3fb950; 
+            border: 1px solid rgba(35, 134, 54, 0.4);
+            padding: 2px 8px; border-radius: 12px; font-size: 0.7rem; font-weight: 600;
+        }
+
+        /* KPI GRID (EQUAL SIZE) */
+        .kpi-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr); /* 2 columns exactly equal */
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        .kpi-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 15px;
+            display: flex; flex-direction: column; justify-content: space-between;
+            height: 100px; /* FIXED HEIGHT */
+        }
+        .kpi-title { font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; font-weight: 600; }
+        .kpi-value { font-size: 1.8rem; font-weight: 700; color: #fff; line-height: 1.2; }
+        .kpi-sub { font-size: 0.75rem; color: #3fb950; } /* Green trend */
+        .kpi-sub.warn { color: #d29922; } /* Orange trend */
+
+        /* CHARTS GRID */
+        .charts-grid {
+            display: grid; grid-template-columns: 1fr; gap: 15px; margin-bottom: 20px;
+        }
+        @media (min-width: 768px) { .charts-grid { grid-template-columns: 1fr 1fr; } }
+
+        .chart-box {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 10px;
+            height: 250px; /* FIXED HEIGHT FOR CHARTS */
+            overflow: hidden;
+        }
+
+        /* TABS */
+        .nav-pills { margin-bottom: 15px; border-bottom: 1px solid var(--border); padding-bottom: 10px; }
+        .nav-link {
+            color: var(--text-muted); padding: 5px 15px; font-size: 0.9rem; border-radius: 6px;
+        }
+        .nav-link.active {
+            background: #21262d; color: #fff; font-weight: 600; border: 1px solid var(--border);
+        }
+
+        /* CODE & TABLES */
+        pre { border: 1px solid var(--border); border-radius: 6px; margin: 0; background: #0d1117 !important; }
+        .table-custom { width: 100%; font-size: 0.8rem; border-collapse: collapse; }
+        .table-custom td, .table-custom th { padding: 8px; border-bottom: 1px solid var(--border); color: var(--text-muted); }
+        .table-custom tr:last-child td { border-bottom: none; }
+        .badge-intent { background: #21262d; border: 1px solid var(--border); padding: 2px 6px; border-radius: 4px; color: #fff; }
+
+        /* LOADER */
+        #loader {
+            position: fixed; inset: 0; background: var(--bg-body); z-index: 999;
+            display: flex; align-items: center; justify-content: center;
+        }
+    </style>
+</head>
+<body>
+    <div id="loader"><div class="spinner-border text-secondary" role="status"></div></div>
+
+    <!-- HEADER -->
+    <div class="app-header">
+        <div class="d-flex align-items-center gap-2">
+            <span class="app-title">ConstructionAI</span>
+            <span class="status-badge">● LIVE</span>
+        </div>
+        <button onclick="Telegram.WebApp.close()" class="btn btn-sm btn-dark" style="border:1px solid #30363d">Exit</button>
+    </div>
+
+    <!-- TABS -->
+    <ul class="nav nav-pills" id="myTab" role="tablist">
+        <li class="nav-item"><button class="nav-link active" data-bs-toggle="pill" data-bs-target="#overview">Overview</button></li>
+        <li class="nav-item"><button class="nav-link" data-bs-toggle="pill" data-bs-target="#prompts">Prompts</button></li>
+        <li class="nav-item"><button class="nav-link" data-bs-toggle="pill" data-bs-target="#logs">Logs</button></li>
+    </ul>
+
+    <div class="tab-content">
+        <!-- OVERVIEW TAB -->
+        <div class="tab-pane fade show active" id="overview">
+            
+            <!-- KPI BOXES (FIXED GRID) -->
+            <div class="kpi-grid">
+                <div class="kpi-card">
+                    <div class="kpi-title">Accuracy (F1)</div>
+                    <div class="kpi-value">94.2%</div>
+                    <div class="kpi-sub">▲ 2.1% vs V1</div>
+                </div>
+                <div class="kpi-card">
+                    <div class="kpi-title">Avg Latency</div>
+                    <div class="kpi-value">1.12s</div>
+                    <div class="kpi-sub">Gemini Flash</div>
+                </div>
+                <div class="kpi-card">
+                    <div class="kpi-title">RAG Coverage</div>
+                    <div class="kpi-value">87%</div>
+                    <div class="kpi-sub">Knowledge Base</div>
+                </div>
+                <div class="kpi-card">
+                    <div class="kpi-title">Safety Score</div>
+                    <div class="kpi-value">99.9%</div>
+                    <div class="kpi-sub">Strict Mode</div>
+                </div>
+            </div>
+
+            <!-- CHARTS (STATIC GRID) -->
+            <div class="charts-grid">
+                <div class="chart-box" id="chart_confusion"></div>
+                <div class="chart-box" id="chart_latency"></div>
+                <div class="chart-box" id="chart_ab"></div>
+                <div class="chart-box" id="chart_rag"></div>
+            </div>
+        </div>
+
+        <!-- PROMPTS TAB -->
+        <div class="tab-pane fade" id="prompts">
+            <div class="mb-3">
+                <div class="text-muted small mb-1 text-uppercase fw-bold">Analyst Agent (Router)</div>
+                <pre><code class="language-python">{{ prompts.analyst }}</code></pre>
+            </div>
+            <div class="mb-3">
+                <div class="text-muted small mb-1 text-uppercase fw-bold">Support Agent (Constraint-Based)</div>
+                <pre><code class="language-python">{{ prompts.support }}</code></pre>
+            </div>
+        </div>
+
+        <!-- LOGS TAB -->
+        <div class="tab-pane fade" id="logs">
+            <div class="chart-box" style="height: auto; min-height: 400px;">
+                <table class="table-custom">
+                    <thead><tr><th>Time</th><th>Intent</th><th>Latency</th></tr></thead>
+                    <tbody>
+                        {% for log in logs %}
+                        <tr>
+                            <td>{{ log.time }}</td>
+                            <td><span class="badge-intent">{{ log.intent }}</span></td>
+                            <td class="{{ 'text-success' if log.status == 'OK' else 'text-warning' }}">{{ log.latency }}s</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-python.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+    <script>
+        var rawJSON = '{{ graphJSON | safe }}';
+        
+        try {
+            var graphs = JSON.parse(rawJSON);
+            // STATIC CONFIG: No Zoom, No Pan, No ModeBar
+            var config = {
+                staticPlot: true,  // Completely static image behavior
+                responsive: true,
+                displayModeBar: false
+            };
+            
+            Plotly.newPlot('chart_confusion', graphs.confusion.data, graphs.confusion.layout, config);
+            Plotly.newPlot('chart_latency', graphs.latency.data, graphs.latency.layout, config);
+            Plotly.newPlot('chart_ab', graphs.ab.data, graphs.ab.layout, config);
+            Plotly.newPlot('chart_rag', graphs.rag.data, graphs.rag.layout, config);
+
+        } catch(e) { console.error(e); }
+
+        window.onload = function() {
+            document.getElementById('loader').style.display = 'none';
+            Telegram.WebApp.ready();
+            Telegram.WebApp.expand();
+        }
+    </script>
+</body>
+</html>

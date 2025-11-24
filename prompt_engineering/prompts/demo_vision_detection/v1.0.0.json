@@ -1,0 +1,10 @@
+{
+  "version": "1.0.0",
+  "prompt_text": "Опиши товар на картинке.",
+  "description": "Базовый промпт для распознавания товаров",
+  "author": "demo_user",
+  "created_at": "2025-11-22T20:23:16.366310",
+  "hash": "7e503681986d1580",
+  "metadata": {},
+  "parent_version": null
+}

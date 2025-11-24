@@ -1,0 +1,82 @@
+# =============================================================================
+# Docker Ignore File - ConstructionAI
+# Exclude files from Docker build context for faster builds
+# =============================================================================
+
+# Git
+.git
+.gitignore
+
+# Python
+__pycache__
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+.venv/
+env/
+.env.local
+*.egg-info/
+dist/
+build/
+.eggs/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# Tests
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+.nox/
+
+# Documentation (except README)
+*.md
+!README.md
+
+# Reports and logs
+*.log
+reports/
+logs/
+*.jsonl
+
+# Development files
+test_*.py
+demo_*.py
+generate_*.py
+interactive_*.py
+check_*.py
+verify_*.py
+measure_*.py
+
+# Data files (will be mounted as volumes)
+data/
+experiments/
+
+# Binaries
+cloudflared
+*.exe
+
+# Backup files
+*.bak
+*.backup
+*.old
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+tunnel.log
+tunnel_url.txt
+web.log
+
+# Environment files (use env_file in docker-compose)
+.env
+.env.*
+!.env.example

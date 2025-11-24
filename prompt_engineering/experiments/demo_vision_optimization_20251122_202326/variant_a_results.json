@@ -1,0 +1,47 @@
+[
+  {
+    "variant_name": "Baseline_v1",
+    "input_data": {
+      "product": "BOSCH GSR 12V-15",
+      "type": "Дрель"
+    },
+    "output": "Generated output for BOSCH GSR 12V-15",
+    "metrics": {
+      "accuracy": 0.7353693998898876,
+      "f1_score": 0.8241412838392765,
+      "exact_match": 0.8017786192819533
+    },
+    "execution_time": 0.5000925064086914,
+    "timestamp": "2025-11-22T20:23:23.868753"
+  },
+  {
+    "variant_name": "Baseline_v1",
+    "input_data": {
+      "product": "MAKITA DF330DWE",
+      "type": "Дрель"
+    },
+    "output": "Generated output for MAKITA DF330DWE",
+    "metrics": {
+      "accuracy": 0.7006639250905924,
+      "f1_score": 0.8770844003010688,
+      "exact_match": 0.9286020974237508
+    },
+    "execution_time": 0.5000805854797363,
+    "timestamp": "2025-11-22T20:23:24.368871"
+  },
+  {
+    "variant_name": "Baseline_v1",
+    "input_data": {
+      "product": "KNAUF Rotband",
+      "type": "Штукатурка"
+    },
+    "output": "Generated output for KNAUF Rotband",
+    "metrics": {
+      "accuracy": 0.7686659917040837,
+      "f1_score": 0.845538138614983,
+      "exact_match": 0.7893018100833298
+    },
+    "execution_time": 0.5000894069671631,
+    "timestamp": "2025-11-22T20:23:24.868996"
+  }
+]

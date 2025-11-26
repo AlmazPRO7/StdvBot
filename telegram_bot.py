@@ -16,6 +16,8 @@ from src.llm_client import GeminiClient
 from src.prompts import ANALYST_SYSTEM_PROMPT, SUPPORT_AGENT_SYSTEM_PROMPT, VISION_SYSTEM_PROMPT, BLAME_SYSTEM_PROMPT, UNIVERSAL_AGENT_SYSTEM_PROMPT, POLICY_AGENT_SYSTEM_PROMPT
 from src.visualizer import create_dashboard
 from src.rag_engine import RAGSystem
+from src.rate_limiter import rate_limiter
+from src.metrics import bot_metrics
 
 # --- PROMPT ENGINEERING TOOLS ---
 from prompt_engineering.prompt_manager import PromptManager
@@ -177,6 +179,78 @@ async def clear_chat(context: ContextTypes.DEFAULT_TYPE, chat_id: int, current_m
 
     logging.info(f"Chat {chat_id} cleared: {deleted_count} messages deleted")
     return deleted_count
+
+# --- RATE LIMITING HELPER ---
+async def check_rate_limit(update: Update, context: ContextTypes.DEFAULT_TYPE) -> bool:
+    """
+    Проверяет лимит запросов пользователя.
+    Возвращает True если можно продолжать, False если лимит исчерпан.
+    """
+    user_id = update.effective_user.id
+    chat_id = update.effective_chat.id
+
+    allowed, remaining = rate_limiter.consume(user_id)
+
+    if not allowed:
+        bot_metrics.track_rate_limited(user_id)
+        reset_time = rate_limiter.get_time_until_reset(user_id)
+
+        msg = await context.bot.send_message(
+            chat_id=chat_id,
+            text=f"⚠️ <b>Лимит запросов исчерпан</b>\n\n"
+                 f"Вы использовали все 30 запросов за сегодня.\n"
+                 f"Лимит обновится через: <b>{reset_time}</b>\n\n"
+                 f"<i>Ограничение защищает сервис от перегрузки.</i>",
+            parse_mode="HTML"
+        )
+        await mark_for_delete(context, chat_id, msg.message_id)
+        return False
+
+    # Показываем предупреждение когда осталось мало запросов
+    if remaining <= 5 and remaining > 0:
+        logging.info(f"User {user_id} has {remaining} requests left today")
+
+    return True
+
+# --- STATS COMMAND ---
+async def stats_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Показывает статистику использования бота"""
+    user_id = update.effective_user.id
+    chat_id = update.effective_chat.id
+
+    # Удаляем предыдущие временные сообщения
+    await cleanup_previous(context, chat_id)
+    await mark_for_delete(context, chat_id, update.message.message_id)
+
+    # Статус лимита пользователя
+    limit_status = rate_limiter.get_status(user_id)
+    reset_time = rate_limiter.get_time_until_reset(user_id)
+
+    # Общая статистика бота
+    summary = bot_metrics.get_summary()
+    today = bot_metrics.get_today_stats()
+
+    text = (
+        f"📊 <b>Статистика</b>\n\n"
+
+        f"<b>Ваш лимит:</b>\n"
+        f"• Использовано: {limit_status['used']}/{limit_status['limit']}\n"
+        f"• Осталось: {limit_status['remaining']}\n"
+        f"• Обновление через: {reset_time}\n\n"
+
+        f"<b>Бот сегодня:</b>\n"
+        f"• Запросов: {today['requests']}\n"
+        f"• Уникальных: {today['unique_users_count']}\n\n"
+
+        f"<b>Всего:</b>\n"
+        f"• Запросов: {summary['total']['requests']}\n"
+        f"• Пользователей: {summary['unique_users']}\n"
+        f"• Фото: {summary['total']['photo_analyses']}\n"
+        f"• Голосовых: {summary['total']['voice_messages']}\n"
+    )
+
+    msg = await update.message.reply_text(text, parse_mode="HTML")
+    await mark_for_delete(context, chat_id, msg.message_id)
 
 # --- ADMIN PANEL ---
 async def admin_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -600,6 +674,7 @@ async def process_user_message(text: str, update: Update, context: ContextTypes.
 async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text = update.message.text
     chat_id = update.effective_chat.id
+    user_id = update.effective_user.id
 
     # Удаляем предыдущие временные сообщения при новом действии
     await cleanup_previous(context, chat_id)
@@ -607,6 +682,7 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # Помечаем сообщение пользователя для удаления
     await mark_for_delete(context, chat_id, update.message.message_id)
 
+    # Кнопки меню - без лимита
     if text == "📂 Пример CSV":
         demo_path = "data/demo/golden_dataset_full.csv"
         if os.path.exists(demo_path):
@@ -625,16 +701,31 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await help_handler(update, context)
         return
 
+    # Проверка лимита для AI-запросов
+    if not await check_rate_limit(update, context):
+        return
+
+    # Трекинг метрик
+    bot_metrics.track_request(user_id, request_type="text")
+
     await process_user_message(text, update, context, update.message.message_id)
 
 async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = update.effective_chat.id
+    user_id = update.effective_user.id
 
     # Удаляем предыдущие временные сообщения
     await cleanup_previous(context, chat_id)
 
     # Фото пользователя - для удаления
     await mark_for_delete(context, chat_id, update.message.message_id)
+
+    # Проверка лимита
+    if not await check_rate_limit(update, context):
+        return
+
+    # Трекинг метрик
+    bot_metrics.track_request(user_id, request_type="photo")
 
     photo_file = await update.message.photo[-1].get_file()
     msg = await update.message.reply_text(
@@ -660,12 +751,20 @@ async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def handle_voice(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = update.effective_chat.id
+    user_id = update.effective_user.id
 
     # Удаляем предыдущие временные сообщения
     await cleanup_previous(context, chat_id)
 
     # Голосовое пользователя - для удаления
     await mark_for_delete(context, chat_id, update.message.message_id)
+
+    # Проверка лимита
+    if not await check_rate_limit(update, context):
+        return
+
+    # Трекинг метрик
+    bot_metrics.track_request(user_id, request_type="voice")
 
     voice_file = await update.message.voice.get_file()
     msg = await update.message.reply_text(
@@ -701,12 +800,20 @@ async def handle_voice(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def handle_document(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = update.effective_chat.id
+    user_id = update.effective_user.id
 
     # Удаляем предыдущие временные сообщения при новом действии
     await cleanup_previous(context, chat_id)
 
     # Помечаем документ пользователя для удаления
     await mark_for_delete(context, chat_id, update.message.message_id)
+
+    # Проверка лимита
+    if not await check_rate_limit(update, context):
+        return
+
+    # Трекинг метрик
+    bot_metrics.track_request(user_id, request_type="text")
 
     document = update.message.document
     if not document.file_name.endswith('.csv'):
@@ -751,14 +858,16 @@ async def post_init(application):
     # 1. Принудительно удаляем ВСЕ старые команды из кэша Telegram
     await application.bot.delete_my_commands()
     
-    # 2. Устанавливаем только одну актуальную команду
+    # 2. Устанавливаем команды бота
     await application.bot.set_my_commands([
-        ("start", "🚀 Главное меню / Перезапуск")
+        ("start", "🚀 Главное меню / Перезапуск"),
+        ("stats", "📊 Статистика и лимиты")
     ])
 
 if __name__ == '__main__':
     app = ApplicationBuilder().token(Config.TELEGRAM_TOKEN).post_init(post_init).build()
     app.add_handler(CommandHandler("start", start))
+    app.add_handler(CommandHandler("stats", stats_command))
     # Removed admin command per request
     app.add_handler(CallbackQueryHandler(button_callback))
     app.add_handler(MessageHandler(filters.TEXT & (~filters.COMMAND), handle_text))
